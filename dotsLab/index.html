@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Points</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="circleCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('circleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const points = [];
+    const radius = 150;
+    const circleCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+    const mouse = { x: null, y: null };
+    const density = 10;
+    const trailDuration = 500;
+    const minDistance = 0.5;
+    const maxTrailCount = 500;
+    const colorSwapDelay = 500;
+
+    const trails = [];
+
+    function getRandomColor() {
+      const r = Math.floor(Math.random() * 256);
+      const g = Math.floor(Math.random() * 256);
+      const b = Math.floor(Math.random() * 256);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    for (let r = 0; r <= radius; r += density) {
+      const numPoints = Math.ceil((2 * Math.PI * r) / density);
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * 2 * Math.PI;
+        points.push({
+          x: circleCenter.x + r * Math.cos(angle),
+          y: circleCenter.y + r * Math.sin(angle),
+          originalX: circleCenter.x + r * Math.cos(angle),
+          originalY: circleCenter.y + r * Math.sin(angle),
+          vx: 0,
+          vy: 0,
+          color: getRandomColor(), 
+          lastX: circleCenter.x + r * Math.cos(angle),
+          lastY: circleCenter.y + r * Math.sin(angle),
+          lastColorSwapTime: 0,
+        });
+      }
+    }
+
+    canvas.addEventListener('mousemove', (event) => {
+      mouse.x = event.clientX;
+      mouse.y = event.clientY;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      mouse.x = null;
+      mouse.y = null;
+    });
+
+    function checkCollisions() {
+      const currentTime = Date.now();
+
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          const dx = points[j].x - points[i].x;
+          const dy = points[j].y - points[i].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 5) {
+            if (currentTime - points[i].lastColorSwapTime >= colorSwapDelay &&
+                currentTime - points[j].lastColorSwapTime >= colorSwapDelay) {
+
+              const tempColor = points[i].color;
+              points[i].color = points[j].color;
+              points[j].color = tempColor;
+
+              points[i].lastColorSwapTime = currentTime;
+              points[j].lastColorSwapTime = currentTime;
+            }
+          }
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const currentTime = Date.now();
+
+      const newTrails = [];
+      trails.forEach((trail) => {
+        const age = currentTime - trail.timestamp;
+        const alpha = Math.max(0, 1 - age / trailDuration);
+
+        if (alpha > 0) {
+          newTrails.push(trail);
+          ctx.beginPath();
+          ctx.arc(trail.x, trail.y, 1, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${parseInt(trail.color.slice(4, 7))}, ${parseInt(trail.color.slice(9, 12))}, ${parseInt(trail.color.slice(13, 16))}, ${alpha})`;
+          ctx.fill();
+        }
+      });
+
+      trails.length = 0;
+      trails.push(...newTrails);
+
+      if (trails.length > maxTrailCount) {
+        trails.splice(0, trails.length - maxTrailCount);
+      }
+
+      for (const point of points) {
+        const dx = mouse.x - point.x || 0;
+        const dy = mouse.y - point.y || 0;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const force = Math.max(0, 100 - distance); 
+        const angle = Math.atan2(dy, dx);
+
+        if (distance < 100) {
+          point.vx -= Math.cos(angle) * force * 0.05;
+          point.vy -= Math.sin(angle) * force * 0.05;
+        }
+
+        point.vx += (point.originalX - point.x) * 0.01;
+        point.vy += (point.originalY - point.y) * 0.01;
+
+        point.x += point.vx;
+        point.y += point.vy;
+
+        point.vx *= 0.9;
+        point.vy *= 0.9;
+
+        const movementDistance = Math.sqrt((point.x - point.lastX) ** 2 + (point.y - point.lastY) ** 2);
+        if (movementDistance > minDistance) {
+          trails.push({
+            x: point.x,
+            y: point.y,
+            color: point.color,
+            timestamp: currentTime,
+          });
+        }
+
+        point.lastX = point.x;
+        point.lastY = point.y;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = point.color;
+        ctx.fill();
+      }
+      checkCollisions();
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
