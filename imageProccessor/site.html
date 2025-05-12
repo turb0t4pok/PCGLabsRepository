@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Морфологическая обработка и фильтры</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      text-align: center;
+    }
+    canvas {
+      margin: 10px;
+      border: 1px solid #ccc;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    .controls label {
+      margin-right: 10px;
+    }
+    .controls select, .controls input {
+      margin-right: 15px;
+    }
+    .container {
+      margin: auto 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+  </style>
+  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+</head>
+<body>
+  <h1>Морфологическая обработка и фильтры</h1>
+
+  <div class="controls">
+    <input type="file" id="uploadImage" accept="image/*">
+    <br><br>
+    <label for="morphOperation">Морфологическая операция:</label>
+    <select id="morphOperation">
+      <option value="erode">Эрозия</option>
+      <option value="dilate">Дилатация</option>
+      <option value="open">Открытие</option>
+      <option value="close">Закрытие</option>
+    </select>
+
+    <label for="elementShape">Форма структурирующего элемента:</label>
+    <select id="elementShape">
+      <option value="rect">Прямоугольник</option>
+      <option value="ellipse">Эллипс</option>
+      <option value="cross">Крест</option>
+    </select>
+
+    <label for="elementSize">Размер элемента:</label>
+    <input type="number" id="elementSize" value="5" min="1" max="50">
+
+    <button id="applyMorphAndSharpness">Применить морфологию</button>
+    <br><br>
+  </div>
+  <div class="container">
+    <canvas id="canvasInput"></canvas>
+    <canvas id="canvasOutput"></canvas>
+    <canvas id="canvasOutput1"></canvas>
+    <canvas id="canvasOutput2"></canvas>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
