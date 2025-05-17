@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Metadata Extractor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <h1>Извлечение метаданных изображений</h1>
+    <form id="uploadForm">
+        <label for="fileInput">Выберите изображения:</label>
+        <input type="file" id="fileInput" name="files[]" multiple>
+        <button type="submit">Загрузить</button>
+    </form>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>Имя файла</th>
+                <th>Размер (пиксели)</th>
+                <th>Разрешение (dpi)</th>
+                <th>Глубина цвета</th>
+                <th>Сжатие</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const results = await response.json();
+            const tableBody = document.querySelector('#resultTable tbody');
+            tableBody.innerHTML = ''; // Очистка предыдущих данных
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+
+                Object.values(result).forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                tableBody.appendChild(row);
+            });
+        });
+    </script>
+</body>
+</html>
