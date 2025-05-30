@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Каркасная Модель - Буква "П"</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .view {
+            flex: 1 1 50%;
+            background: #f0f0f0;
+            
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        #controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            width: 100%;
+            background: #ddd;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #output{
+            width: 10%;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: #000000;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            color: rgb(0, 255, 38);
+        }
+        label {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div class="control-group">
+            <label>Rotate X</label>
+            <input type="range" id="rotateX" min="-3.14" max="3.14" step="0.01" value="0">
+        </div>
+        <div class="control-group">
+            <label>Rotate Y</label>
+            <input type="range" id="rotateY" min="-3.14" max="3.14" step="0.01" value="0">
+        </div>
+        <div class="control-group">
+            <label>Rotate Z</label>
+            <input type="range" id="rotateZ" min="-3.14" max="3.14" step="0.01" value="0">
+        </div>
+        <div class="control-group">
+            <label>Translate X</label>
+            <input type="range" id="translateX" min="-5" max="5" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label>Translate Y</label>
+            <input type="range" id="translateY" min="-5" max="5" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label>Translate Z</label>
+            <input type="range" id="translateZ" min="-5" max="5" step="0.1" value="0">
+        </div>
+        <div class="control-group">
+            <label>Scale</label>
+            <input type="range" id="scale" min="0.1" max="2" step="0.1" value="1">
+        </div>  
+    </div>
+    <div class="output">
+        <pre id="output"></pre>
+    </div>
+    <div class="view" id="mainView"></div>
+    <div class="view" id="xyProjection"></div>
+    <div class="view" id="yxProjection"></div>
+    <div class="view" id="xzProjection"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Основная сцена
+        const scene = new THREE.Scene();
+
+        // Камеры
+        const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        perspectiveCamera.position.set(3, 3, 3);
+        perspectiveCamera.lookAt(0, 0, 0);
+        const cameras = {
+            xy: new THREE.OrthographicCamera(-8.5, 8.5, 3.8, -3.8, 0.1, 1000),
+            yx: new THREE.OrthographicCamera(-8.5, 8.5, 3.8, -3.8, 0.1, 1000),
+            xz: new THREE.OrthographicCamera(-8.5, 8.5, 3.8, -3.8, 0.1, 1000),
+        };
+
+        cameras.xy.position.set(0, 0, 5); // XY проекция
+        cameras.yx.position.set(0, -5, 0); // YX проекция
+        cameras.xz.position.set(5, 0, 0); // XZ проекция
+
+        Object.values(cameras).forEach(cam => cam.lookAt(0, 0, 0));
+
+        // Рендереры
+        const renderers = {
+            main: new THREE.WebGLRenderer(),
+            xy: new THREE.WebGLRenderer(),
+            yx: new THREE.WebGLRenderer(),
+            xz: new THREE.WebGLRenderer(),
+        };
+
+        renderers.main.setSize(window.innerWidth / 2, window.innerHeight / 2);
+        renderers.xy.setSize(window.innerWidth / 2, window.innerHeight / 2);
+        renderers.yx.setSize(window.innerWidth / 2, window.innerHeight / 2);
+        renderers.xz.setSize(window.innerWidth / 2, window.innerHeight / 2);
+
+        document.getElementById('mainView').appendChild(renderers.main.domElement);
+        document.getElementById('xyProjection').appendChild(renderers.xy.domElement);
+        document.getElementById('yxProjection').appendChild(renderers.yx.domElement);
+        document.getElementById('xzProjection').appendChild(renderers.xz.domElement);
+
+        // Добавление осей координат
+        function addAxes(scene) {
+            const axesLength = 3.2;
+            const xAxis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), axesLength, 0xff0000);
+            const yAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), axesLength, 0x00ff00);
+            const zAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), axesLength, 0x0000ff);
+
+            scene.add(xAxis, yAxis, zAxis);
+        }
+
+        addAxes(scene);
+
+        // Массив координат вершин буквы "П"
+        const vertices = [
+            [-0.75, -0.75, -0.25], [-0.25, -0.75, -0.25], [-0.25, 0.25, -0.25], [0.25, 0.25, -0.25],
+            [0.25, -0.75, -0.25], [0.75, -0.75, -0.25], [0.75, 0.75, -0.25], [-0.75, 0.75, -0.25],
+            [-0.75, -0.75, 0.25], [-0.25, -0.75,  0.25], [-0.25, 0.25,  0.25], [0.25, 0.25,  0.25],
+            [0.25, -0.75,  0.25], [0.75, -0.75,  0.25], [0.75, 0.75,  0.25], [-0.75, 0.75,  0.25]
+        ];
+
+        // Массив индексов граней (линий) для построения каркасной модели
+        const edges = [
+            [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 0],
+            [0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15],
+            [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14], [14, 15], [15, 8]
+        ];
+
+        // Геометрия и материал для линии
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(edges.flatMap(([start, end]) => [
+            ...vertices[start],
+            ...vertices[end]
+        ]));
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+        const line = new THREE.LineSegments(geometry, material);
+        scene.add(line);
+
+        // Рендеринг
+        function render() {
+            renderers.main.render(scene, perspectiveCamera);
+            renderers.xy.render(scene, cameras.xy);
+            renderers.yx.render(scene, cameras.yx);
+            renderers.xz.render(scene, cameras.xz);
+        }
+        
+        function matrix(){
+            let output = "";
+            let omegaX = parseFloat(document.getElementById('rotateX').value);
+            let omegaY = parseFloat(document.getElementById('rotateY').value);
+            let omegaZ = parseFloat(document.getElementById('rotateZ').value);
+            let tx = parseFloat(document.getElementById('translateX').value);
+            let ty = parseFloat(document.getElementById('translateY').value);
+            let tz = parseFloat(document.getElementById('translateZ').value);
+            let scale = parseFloat(document.getElementById('scale').value);
+            let tempMatrix1 = [
+                [Math.cos(omegaY)*Math.cos(omegaZ), -Math.cos(omegaY)*Math.sin(omegaZ), Math.sin(omegaY), 0],
+                [Math.sin(omegaX)*Math.sin(omegaY)*Math.cos(omegaZ) + Math.sin(omegaZ)*Math.cos(omegaX), -Math.sin(omegaX)*Math.sin(omegaY)*Math.sin(omegaZ) + Math.cos(omegaX)*Math.cos(omegaZ), -Math.sin(omegaX)*Math.cos(omegaY), 0],
+                [Math.sin(omegaX)*Math.sin(omegaZ) - Math.sin(omegaY)*Math.cos(omegaX)*Math.cos(omegaZ), Math.sin(omegaX)*Math.cos(omegaZ) + Math.sin(omegaY)*Math.sin(omegaZ)*Math.cos(omegaX), Math.cos(omegaX)*Math.cos(omegaY), 0],
+                [0, 0, 0, 1]
+            ];
+            let tempMatrix2 = [
+                [scale, 0, 0, 0],
+                [0, scale, 0, 0],
+                [0, 0, scale, 0],
+                [tx*scale, ty*scale, tz*scale, 1]
+            ];
+            let finMatrix = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+            for(let i = 0; i < 4; i++){
+                for(let j = 0; j < 4; j++){
+                    for(let k = 0; k < 4; k++){
+                        finMatrix[i][j] += tempMatrix2[i][k] * tempMatrix1[k][j];
+                    }
+                }
+            }
+            for(let i = 0; i < 4; i++){
+                for(let j = 0; j < 4; j++){
+                    output += `${finMatrix[i][j].toFixed(2)} `;
+                }
+                output += `\n`;
+            }
+            document.getElementById('output').innerText = output;
+        }
+        // Настройка трансформаций
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', () => {
+                line.scale.set(
+                    parseFloat(document.getElementById('scale').value),
+                    parseFloat(document.getElementById('scale').value),
+                    parseFloat(document.getElementById('scale').value)
+                );
+                line.rotation.x = parseFloat(document.getElementById('rotateX').value);
+                line.rotation.y = parseFloat(document.getElementById('rotateY').value);
+                line.rotation.z = parseFloat(document.getElementById('rotateZ').value);
+                line.position.x = parseFloat(document.getElementById('translateX').value);
+                line.position.y = parseFloat(document.getElementById('translateY').value);
+                line.position.z = parseFloat(document.getElementById('translateZ').value);
+                matrix();
+                render();
+            });
+        });
+
+        // Первичный рендеринг
+        render();
+        matrix();
+        // Обновление размеров
+        window.addEventListener('resize', () => {
+            const viewWidth = window.innerWidth / 2;
+            const viewHeight = window.innerHeight / 2;
+
+            renderers.main.setSize(viewWidth, viewHeight);
+            renderers.xy.setSize(viewWidth, viewHeight);
+            renderers.yx.setSize(viewWidth, viewHeight);
+            renderers.xz.setSize(viewWidth, viewHeight);
+
+            cameras.xy.updateProjectionMatrix();
+            cameras.yx.updateProjectionMatrix();
+            cameras.xz.updateProjectionMatrix();
+
+            render();
+        });
+    </script>
+</body>
+</html>
